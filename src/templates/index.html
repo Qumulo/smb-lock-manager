@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Qumulo SMB Lock Manager</title>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@200;300;400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+
+  <style>
+    /* Qumulo Design System - CSS Variables */
+    :root {
+      /* Primary Colors */
+      --agave-400: hsl(192, 85%, 56%);
+      --agave-500: hsl(192, 100%, 40%);
+      --agave-600: hsl(197, 100%, 34%);
+      --agave-700: hsl(197, 100%, 23%);
+      --agave-800: hsl(197, 100%, 16%);
+
+      --blackberry-950: hsl(213, 22%, 10%);
+      --blackberry-925: hsl(212, 22%, 12%);
+      --blackberry-900: hsl(212, 22%, 14%);
+      --blackberry-850: hsl(213, 23%, 16%);
+      --blackberry-800: hsl(213, 23%, 18%);
+      --blackberry-750: hsl(210, 26%, 21%);
+      --blackberry-700: hsl(209, 27%, 24%);
+      --blackberry-600: hsl(211, 19%, 38%);
+      --blackberry-500: hsl(214, 13%, 55%);
+      --blackberry-400: hsl(213, 13%, 66%);
+      --blackberry-100: hsl(213, 22%, 92%);
+
+      --lychee-50: hsl(180, 4%, 95%);
+      --lychee-100: hsl(210, 5%, 92%);
+      --lychee-300: hsl(204, 5%, 79%);
+      --lychee-400: hsl(210, 5%, 67%);
+      --lychee-500: hsl(207, 5%, 54%);
+
+      /* Status Colors */
+      --pomegranate-400: hsl(355, 100%, 74%);
+      --pomegranate-500: hsl(355, 100%, 64%);
+      --pomegranate-600: hsl(352, 80%, 47%);
+      --pomegranate-700: hsl(343, 82%, 30%);
+
+      --kiwi-400: hsl(83, 98%, 42%);
+      --kiwi-500: hsl(83, 98%, 34%);
+      --kiwi-600: hsl(82, 98%, 24%);
+      --kiwi-700: hsl(78, 97%, 14%);
+
+      --banana-400: hsl(52, 100%, 40%);
+      --banana-500: hsl(52, 100%, 33%);
+      --banana-600: hsl(52, 100%, 23%);
+      --banana-700: hsl(52, 100%, 14%);
+
+      --kumquat-400: hsl(36, 100%, 50%);
+      --kumquat-500: hsl(36, 100%, 40%);
+      --kumquat-600: hsl(30, 100%, 31%);
+      --kumquat-700: hsl(38, 100%, 18%);
+    }
+
+    /* General Styles */
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Nunito', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif';
+      font-weight: 300;
+      margin: 0;
+      padding: 20px;
+      background-color: var(--blackberry-950);
+      color: var(--lychee-300);
+      font-size: 1rem;
+    }
+
+    h1 {
+      font-size: 2.25rem;
+      font-weight: 200;
+      color: var(--lychee-100);
+      margin-top: 0;
+      margin-bottom: 1.5rem;
+    }
+
+    h2 {
+      font-size: 1.5rem;
+      font-weight: 300;
+      color: var(--lychee-100);
+    }
+
+    /* Buttons */
+    button {
+      font-family: 'Nunito', sans-serif;
+      background-color: var(--agave-500);
+      color: var(--blackberry-950);
+      padding: 0.5rem 1rem;
+      border: none;
+      border-radius: 0.375rem;
+      cursor: pointer;
+      font-weight: 400;
+      font-size: 1rem;
+      transition: background-color 0.2s;
+    }
+
+    button:hover {
+      background-color: var(--agave-600);
+    }
+
+    button:focus-visible {
+      outline: 2px solid var(--agave-500);
+      outline-offset: 2px;
+    }
+
+    /* Logout Button */
+    .logout-btn {
+      background-color: var(--pomegranate-500);
+      color: white;
+      padding: 0.5rem 1rem;
+      text-decoration: none;
+      border-radius: 0.375rem;
+      display: inline-block;
+      font-weight: 400;
+      transition: background-color 0.2s;
+    }
+
+    .logout-btn:hover {
+      background-color: var(--pomegranate-600);
+    }
+
+    #locksCount {
+      margin-left: 1rem;
+      color: var(--lychee-300);
+    }
+
+    /* Info Box */
+    #rcorners1 {
+      border-radius: 0.5rem;
+      background-color: var(--blackberry-900);
+      border: 1px solid var(--blackberry-700);
+      padding: 1rem 1.5rem;
+      color: var(--lychee-300);
+      margin-bottom: 1rem;
+    }
+
+    /* Input Fields */
+    input[type="text"] {
+      font-family: 'Nunito', sans-serif;
+      background-color: var(--blackberry-800);
+      color: var(--lychee-300);
+      border: 1px solid var(--blackberry-700);
+      border-radius: 0.375rem;
+      padding: 0.5rem 0.75rem;
+      margin-right: 0.5rem;
+      width: 300px;
+      font-size: 1rem;
+      transition: border-color 0.2s;
+    }
+
+    input[type="text"]::placeholder {
+      color: var(--lychee-400);
+    }
+
+    input[type="text"]:focus {
+      border-color: var(--agave-500);
+      outline: 2px solid hsla(192, 100%, 40%, 0.3);
+      outline-offset: 0;
+    }
+
+    /* Checkboxes */
+    input[type="checkbox"] {
+      cursor: pointer;
+      width: 1rem;
+      height: 1rem;
+    }
+
+    /* Paragraph containers */
+    p {
+      color: var(--lychee-300);
+      padding: 1rem;
+      background-color: var(--blackberry-900);
+      border-radius: 0.5rem;
+      border: 1px solid var(--blackberry-700);
+      margin-bottom: 1rem;
+    }
+
+    small {
+      color: var(--lychee-400);
+      font-size: 0.875rem;
+    }
+
+    /* Table Styles */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 1rem;
+      background-color: var(--blackberry-900);
+      border-radius: 0.5rem;
+      overflow: hidden;
+    }
+
+    th {
+      background-color: var(--blackberry-800);
+      color: var(--lychee-100);
+      text-align: left;
+      padding: 0.75rem 1rem;
+      font-weight: 500;
+      border-bottom: 1px solid var(--blackberry-700);
+      cursor: pointer;
+      transition: background-color 0.2s;
+    }
+
+    th:hover {
+      background-color: var(--blackberry-750);
+    }
+
+    th.no-hover:hover {
+      background-color: var(--blackberry-800);
+      cursor: default;
+    }
+
+    th.sorting-active {
+      background-color: var(--blackberry-750);
+      color: var(--agave-400);
+    }
+
+    td {
+      padding: 0.75rem 1rem;
+      border-bottom: 1px solid var(--blackberry-700);
+      color: var(--lychee-300);
+    }
+
+    tr:hover {
+      background-color: var(--blackberry-850);
+    }
+
+    tr:nth-child(even) {
+      background-color: var(--blackberry-900);
+    }
+
+    tr:nth-child(odd) {
+      background-color: var(--blackberry-925);
+    }
+
+    /* Messages */
+    .success-message {
+      color: var(--kiwi-400);
+      font-weight: 400;
+    }
+
+    .error-message {
+      color: var(--pomegranate-400);
+      font-weight: 400;
+    }
+
+    .warning-text {
+      color: var(--pomegranate-400);
+      font-weight: 600;
+    }
+
+    /* Header Section */
+    .header-section {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 1rem 1.5rem;
+      background-color: var(--blackberry-900);
+      border: 1px solid var(--blackberry-700);
+      border-radius: 0.5rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .user-info {
+      color: var(--lychee-300);
+    }
+
+    .user-info b {
+      color: var(--lychee-100);
+      font-weight: 600;
+    }
+
+    /* Spinner Styles */
+    .spinner {
+      border: 8px solid var(--blackberry-700);
+      border-top: 8px solid var(--agave-500);
+      border-radius: 50%;
+      width: 50px;
+      height: 50px;
+      animation: spin 1s linear infinite;
+      margin: auto;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    #spinnerContainer {
+      display: none;
+      text-align: center;
+      margin-top: 1.5rem;
+    }
+
+    /* Results Container */
+    #resultsContainer {
+      margin-top: 1.5rem;
+    }
+
+    #messageDisplay {
+      display: block;
+      margin-bottom: 1rem;
+      font-size: 1rem;
+    }
+
+    #rowCountDisplay {
+      background-color: transparent;
+      border: none;
+      padding: 0;
+      margin-bottom: 0.5rem;
+      color: var(--lychee-400);
+      font-size: 0.875rem;
+    }
+
+    /* Links */
+    a {
+      color: var(--agave-400);
+      text-decoration: none;
+    }
+
+    a:hover {
+      color: var(--agave-500);
+      text-decoration: underline;
+    }
+  </style>
+
+  <script>
+    $(document).ready(function(){
+      $("#getLocksButton").click(function(){
+        // Show spinner instead of progress bar.
+        $("#spinnerContainer").show();
+        $("#locksCount").text("Loading...");
+        $.ajax({
+          url: "/get_smb_locks",
+          type: "get",
+          success: function(response){
+            $("#spinnerContainer").hide();
+            $("#locksCount").text("Number of SMB Locks: " + response.locks_count);
+          },
+          error: function(xhr){
+            $("#spinnerContainer").hide();
+            $("#locksCount").text("Failed to retrieve locks.");
+          }
+        });
+      });
+
+      $("#clearSearchButton").click(function(){
+        $("#searchQuery").val('');
+        $("#searchResults").html('');
+        $("#rowCountDisplay").text('');
+      });
+
+      $("#searchForm").submit(function(event){
+        event.preventDefault(); 
+        $("#spinnerContainer").show();
+        $("#messageDisplay").text('').removeClass('success-message error-message');
+        $.ajax({
+          url: "/search_files",
+          type: "post",
+          contentType: 'application/json',
+          data: JSON.stringify({query: $("#searchQuery").val()}),
+          success: function(response){
+            $("#spinnerContainer").hide();
+            if(response.length > 0){
+              let tableHtml = "<p id='rowCountDisplay'></p><table border='1'><tr><th class='no-hover'><input type='checkbox' id='selectAllLocks' /></th><th>File ID</th><th>File Path</th><th>Mode</th><th>User</th><th>Owner Address</th><th>Node Address</th></tr>";
+              response.forEach(function(file) {
+                tableHtml += `<tr>
+                                <td><input type="checkbox" class="lock-checkbox" data-fileid="${file.file_id}"></td>
+                                <td>${file.file_id}</td>
+                                <td>${file.file_path}</td>
+                                <td>${file.mode}</td>
+                                <td>${file.user}</td>
+                                <td>${file.owner_address}</td>
+                                <td>${file.node_address}</td>
+                              </tr>`;
+              });
+              tableHtml += "</table>";
+              $("#searchResults").html(tableHtml);
+              $("#rowCountDisplay").text("Matching results: " + response.length);
+              addEventListenersToHeaders();
+              $('.close-btn').click(function() {
+                var fileId = $(this).data('fileid');
+                closeHandle(fileId);
+              });
+              $('#selectAllLocks').change(function() {
+                var isChecked = $(this).is(':checked');
+                $('.lock-checkbox').prop('checked', isChecked);
+              });
+            } else {
+              $("#searchResults").html("No matching files found.");
+              $("#rowCountDisplay").text("Matching results: 0");
+            }
+          },
+          error: function(){
+            $("#spinnerContainer").hide();
+            $("#searchResults").html("Error performing the search.");
+          }
+        });
+      });
+
+      $('#closeSelectedLocksButton').click(function() {
+        var selectedFileIds = $('.lock-checkbox:checked').map(function() {
+          return $(this).data('fileid');
+        }).get();
+        
+        var numberOfSelectedLocks = selectedFileIds.length;
+        
+        if (numberOfSelectedLocks > 0) {
+          var confirmClose = confirm("Are you sure you want to close the " + numberOfSelectedLocks + " selected lock(s)?\nPlease double check you are closing the correct handles as\nthis action could lead to lost user work!");
+          if (confirmClose) {
+            closeSelectedHandles(selectedFileIds);
+          }
+        } else {
+          alert('No locks selected.');
+        }
+      });
+    });
+
+    function addEventListenersToHeaders() {
+      const headers = document.querySelectorAll("#searchResults th");
+      headers.forEach((header, index) => {
+        if (index !== 0) {
+          header.addEventListener("click", function() {
+            sortTable(index);
+          });
+        }
+      });
+    }
+
+    function closeSelectedHandles(fileIds) {
+      $.ajax({
+        url: '/close_handles',
+        method: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify({ file_ids: fileIds }),
+        success: function(response) {
+          $("#messageDisplay").text(response.message).addClass('success-message').removeClass('error-message');
+          fileIds.forEach(function(fileId) {
+            $('input.lock-checkbox[data-fileid="' + fileId + '"]').closest('tr').remove();
+          });
+          updateRowCount();
+        },
+        error: function(jqXHR) {
+          $("#messageDisplay").text('Error: ' + errorMessage).addClass('error-message').removeClass('success-message');
+        }
+      });
+    }
+
+    function updateRowCount() {
+      var rowCount = $('#searchResults table tr').length - 1; 
+      $("#rowCountDisplay").text("Matching results: " + rowCount);
+    }
+
+    function sortTable(n) {
+      var table, rows, switching, i, x, y, shouldSwitch, dir, switchcount = 0;
+      table = document.querySelector("table");
+      switching = true;
+      dir = "asc";
+      while (switching) {
+        switching = false;
+        rows = table.rows;
+        for (i = 1; i < (rows.length - 1); i++) {
+          shouldSwitch = false;
+          x = rows[i].getElementsByTagName("TD")[n];
+          y = rows[i + 1].getElementsByTagName("TD")[n];
+          if (dir == "asc") {
+            if (x.innerHTML.toLowerCase() > y.innerHTML.toLowerCase()) {
+              shouldSwitch = true;
+              break;
+            }
+          } else if (dir == "desc") {
+            if (x.innerHTML.toLowerCase() < y.innerHTML.toLowerCase()) {
+              shouldSwitch = true;
+              break;
+            }
+          }
+        }
+        if (shouldSwitch) {
+          rows[i].parentNode.insertBefore(rows[i + 1], rows[i]);
+          switching = true;
+          switchcount++;
+        } else {
+          if (switchcount == 0 && dir == "asc") {
+            dir = "desc";
+            switching = true;
+          }
+        }
+      }
+      highlightSortingColumn(n);
+    }
+
+    function highlightSortingColumn(n) {
+      var headers = document.querySelectorAll("th");
+      headers.forEach(function(header) {
+        header.classList.remove("sorting-active");
+      });
+      headers[n].classList.add("sorting-active");
+    }
+  </script>
+</head>
+
+<body>
+  <h1>Qumulo SMB Lock Manager</h1>
+
+  <div class="header-section">
+    <div class="user-info">
+      Logged in user: <b>{{ who_am_i }}</b>, managing cluster <b>{{ cluster_address }}</b>
+      {% if not rw_user %}
+      <span class="warning-text">&nbsp;&nbsp;This account is not allowed to close locks</span>
+      {% endif %}
+    </div>
+    <div>
+      <a href="/logout" class="logout-btn">Logout</a>
+    </div>
+  </div>
+  <p>
+    <button id="getLocksButton">Get SMB Locks</button>  
+    <span id="locksCount"></span>
+  </p>
+  <p id="rcorners1">
+    Enter a blank search for all locks. Click on "Get SMB Locks" to load new locks
+    <br>
+  </p>
+  <form id="searchForm">
+    <input type="text" id="searchQuery" placeholder="Enter part of a file path"> 
+    <button type="submit">Search</button> <small>(Searches are case-insensitive)</small>
+  </form>
+  <br>
+  <button id="clearSearchButton">Clear Search</button><br>
+  
+  <!-- Hide "Close Locks" buttons from Read Only accounts -->
+  {% if rw_user %}
+  <p>
+    <button id="closeSelectedLocksButton">Close Selected Locks</button>
+  </p>
+  {% endif %}
+  <br>
+
+  <!-- Spinner Container -->
+  <div id="spinnerContainer">
+    <div class="spinner"></div>
+  </div>
+
+  <div id="resultsContainer">
+    <span id="messageDisplay"></span>
+    <span id="searchResults"></span>
+  </div>
+</body>
+</html>

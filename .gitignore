@@ -1,0 +1,44 @@
+.venv/
+.claude/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+ENV/
+*.egg-info/
+dist/
+build/
+
+# Configuration files with sensitive data
+src/async_main.conf
+!src/async_main.conf.example
+
+# Logs
+*.log
+*.pid
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Redis
+dump.rdb
+Qumulo-SMB-Lock-Manager-Web/

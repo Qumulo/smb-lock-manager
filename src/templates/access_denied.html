@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Access Denied - Qumulo SMB Lock Manager</title>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@200;300;400;500;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    /* Qumulo Design System - CSS Variables */
+    :root {
+      /* Primary Colors */
+      --agave-400: hsl(192, 85%, 56%);
+      --agave-500: hsl(192, 100%, 40%);
+      --agave-600: hsl(197, 100%, 34%);
+
+      --blackberry-950: hsl(213, 22%, 10%);
+      --blackberry-900: hsl(212, 22%, 14%);
+      --blackberry-850: hsl(213, 23%, 16%);
+      --blackberry-800: hsl(213, 23%, 18%);
+      --blackberry-700: hsl(209, 27%, 24%);
+
+      --lychee-50: hsl(180, 4%, 95%);
+      --lychee-100: hsl(210, 5%, 92%);
+      --lychee-300: hsl(204, 5%, 79%);
+      --lychee-400: hsl(210, 5%, 67%);
+
+      /* Status Colors */
+      --pomegranate-400: hsl(355, 100%, 74%);
+      --pomegranate-500: hsl(355, 100%, 64%);
+      --pomegranate-600: hsl(352, 80%, 47%);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Nunito', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif';
+      font-weight: 300;
+      margin: 0;
+      padding: 0;
+      background-color: var(--blackberry-950);
+      color: var(--lychee-300);
+      font-size: 1rem;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+    }
+
+    .error-container {
+      max-width: 600px;
+      padding: 3rem;
+      background-color: var(--blackberry-900);
+      border: 1px solid var(--blackberry-700);
+      border-radius: 0.5rem;
+      text-align: center;
+      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    }
+
+    h1 {
+      font-size: 2.25rem;
+      font-weight: 200;
+      color: var(--pomegranate-400);
+      margin-top: 0;
+      margin-bottom: 1rem;
+    }
+
+    p {
+      font-size: 1.125rem;
+      color: var(--lychee-300);
+      margin-bottom: 2rem;
+      line-height: 1.6;
+    }
+
+    .info-box {
+      background-color: hsla(355, 100%, 64%, 0.1);
+      border-left: 4px solid var(--pomegranate-500);
+      padding: 1rem 1.5rem;
+      border-radius: 0.375rem;
+      text-align: left;
+      margin-top: 1.5rem;
+    }
+
+    .info-box p {
+      margin: 0;
+      font-size: 0.875rem;
+      color: var(--lychee-400);
+    }
+
+    .info-box strong {
+      color: var(--pomegranate-400);
+      font-weight: 600;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="error-container">
+    <h1>Access Denied To This Resource</h1>
+    <p>You do not have permission to access this page.</p>
+
+    <div class="info-box">
+      <p><strong>Possible reasons:</strong></p>
+      <p>• You may not have the correct RBAC privileges</p>
+      <p>• Your session may have expired</p>
+      <p>• Contact your administrator for access</p>
+    </div>
+  </div>
+</body>
+</html>
