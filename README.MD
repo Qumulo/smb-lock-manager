@@ -29,7 +29,7 @@ The FS Management Tool in Windows, beyond not being available for Mac or Linux c
 Please note that if you expect to regularly handle such large numbers of locks that the SMB Lock Manager should be deployed in a network location that is as close as possible to the Qumulo cluster for the
 best possible performance.  
 
-Running this code as a Kubernetes cluster deployed in the same data center as the Qumulo cluster allowed the resolution of 80,000 locks in around 16 seconds.
+Running this code as a Kubernetes cluster deployed in the same data center as the Qumulo cluster allowed the resolution of 127,000 locks in around 40 seconds.
 
 ## RBAC privileges required 
 
