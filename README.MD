@@ -24,12 +24,12 @@ locally and reopen it from the Qumulo cluster to get back in sync with the store
 
 ## Why use this tool vs the fsmgmt.msc tool in Windows? 
 
-The FS Management Tool in Windows, beyond not being available for Mac or Linux clients, can only display up to 10k locks or file handles which is a limit that is often exceeded among Qumulo customers while this tool has been field-tested to handle in excess of 32k locks.
+The FS Management Tool in Windows, beyond not being available for Mac or Linux clients, can only display up to 10k locks or file handles which is a limit that is often exceeded among Qumulo customers while this tool has been field-tested to handle in excess of 120,000 locks.
 
 Please note that if you expect to regularly handle such large numbers of locks that the SMB Lock Manager should be deployed in a network location that is as close as possible to the Qumulo cluster for the
 best possible performance.  
 
-Also please be aware that retrieving and displaying 20k or more locks could take several minutes depending on the network latency between the Lock Manager and the Qumulo cluster.
+Running this code as a Kubernetes cluster deployed in the same data center as the Qumulo cluster allowed the resolution of 80,000 locks in around 16 seconds.
 
 ## RBAC privileges required 
 
