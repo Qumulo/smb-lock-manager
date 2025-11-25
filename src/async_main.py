@@ -381,13 +381,15 @@ def find_handle(file_id):
     return None
 
 # Helper function to close a single handle - called concurrently by close_handles
-async def close_single_handle(session, file_id, handle, results):
-    """Close a single handle with proper error handling"""
+async def close_single_handle(session, file_id, handle, results, progress_callback=None):
+    """Close a single handle with proper error handling and optional progress reporting"""
     try:
         url = build_url("/api/v1/smb/files/close")
         async with session.post(url, headers=get_headers(), json=[handle], ssl=False) as response:
             if response.status == 200:
                 results['successful'].append(file_id)
+                if progress_callback:
+                    await progress_callback(file_id, True)
                 return True
             else:
                 response_text = await response.text()
@@ -395,13 +397,122 @@ async def close_single_handle(session, file_id, handle, results):
                     'file_id': file_id,
                     'error': f"HTTP {response.status}: {response_text}"
                 })
+                if progress_callback:
+                    await progress_callback(file_id, False)
                 return False
     except Exception as e:
         results['failed'].append({
             'file_id': file_id,
             'error': f"Exception: {str(e)}"
         })
+        if progress_callback:
+            await progress_callback(file_id, False)
         return False
+
+
+# SSE endpoint for closing handles with real-time progress tracking
+@app.route('/close_handles_stream', methods=['POST'])
+@requires_auth
+async def close_handles_stream():
+    """Close handles with Server-Sent Events progress streaming"""
+    data = await request.get_json()
+    file_ids = data['file_ids']
+
+    async def generate():
+        # Validate and prepare handles
+        handles_to_close = []
+        not_found = []
+
+        for file_id in file_ids:
+            handle = find_handle(str(file_id))
+            if handle:
+                handles_to_close.append((str(file_id), handle))
+            else:
+                not_found.append(str(file_id))
+
+        if not handles_to_close:
+            yield f"data: {json.dumps({'error': 'No valid handles found', 'not_found': not_found})}\n\n"
+            return
+
+        total = len(handles_to_close)
+        results = {
+            'successful': [],
+            'failed': [],
+            'not_found': not_found
+        }
+
+        # Progress callback to report individual lock closures
+        async def report_progress(file_id, success):
+            completed = len(results['successful']) + len(results['failed'])
+            progress_data = {
+                'type': 'progress',
+                'completed': completed,
+                'total': total,
+                'percent': int((completed / total) * 100),
+                'file_id': file_id,
+                'success': success
+            }
+            # Note: Can't yield from nested function, will track and report at batch level
+
+        # Close all handles concurrently with batching
+        batch_size = 100
+        async with aiohttp.ClientSession() as session:
+            for batch_num, i in enumerate(range(0, len(handles_to_close), batch_size)):
+                batch = handles_to_close[i:i + batch_size]
+                tasks = [
+                    close_single_handle(session, file_id, handle, results, report_progress)
+                    for file_id, handle in batch
+                ]
+                await asyncio.gather(*tasks, return_exceptions=True)
+
+                # Report progress after each batch
+                completed = len(results['successful']) + len(results['failed'])
+                progress_data = {
+                    'type': 'progress',
+                    'completed': completed,
+                    'total': total,
+                    'percent': int((completed / total) * 100),
+                    'batch': batch_num + 1
+                }
+                yield f"data: {json.dumps(progress_data)}\n\n"
+
+        # Update Redis cache
+        if results['successful']:
+            open_files_raw = redis_db.get('open_files')
+            open_locks_raw = redis_db.get('smb_locks')
+
+            if open_files_raw and open_locks_raw:
+                open_files = decompress_json(open_files_raw)
+                open_locks = decompress_json(open_locks_raw)
+
+                for file_id in results['successful']:
+                    if file_id in open_files:
+                        del open_files[file_id]
+
+                open_locks['grants'] = [
+                    grant for grant in open_locks.get('grants', [])
+                    if grant['file_id'] not in results['successful']
+                ]
+
+                redis_db.set('open_files', compress_json(open_files))
+                redis_db.set('smb_locks', compress_json(open_locks))
+
+        # Send final results
+        final_data = {
+            'type': 'complete',
+            'successful': len(results['successful']),
+            'failed': len(results['failed']),
+            'not_found': len(results['not_found']),
+            'failed_details': results['failed'][:10],
+            'message': f"Released {len(results['successful'])} of {len(file_ids)} lock(s)"
+        }
+        yield f"data: {json.dumps(final_data)}\n\n"
+
+    return Response(generate(), mimetype='text/event-stream',
+                   headers={
+                       'Cache-Control': 'no-cache',
+                       'X-Accel-Buffering': 'no'
+                   })
 
 
 # Function to close handles sent by the Web UI (optimized for parallel execution).

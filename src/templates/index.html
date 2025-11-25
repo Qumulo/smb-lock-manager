@@ -383,11 +383,51 @@
       border-radius: 0.5rem;
       margin-bottom: 3px;
     }
+
+    /* Progress Bar */
+    #progressContainer {
+      display: none;
+      background-color: var(--blackberry-900);
+      border: 1px solid var(--blackberry-700);
+      border-radius: 0.5rem;
+      padding: 10px;
+      margin-bottom: 5px;
+    }
+
+    #progressBarBg {
+      width: 100%;
+      height: 24px;
+      background-color: var(--blackberry-800);
+      border-radius: 0.375rem;
+      overflow: hidden;
+      margin-top: 5px;
+    }
+
+    #progressBarFill {
+      height: 100%;
+      width: 0%;
+      background-color: var(--agave-500);
+      transition: width 0.3s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--blackberry-950);
+      font-weight: 600;
+      font-size: 0.875rem;
+    }
+
+    #progressText {
+      color: var(--lychee-300);
+      font-size: 0.875rem;
+      margin-bottom: 5px;
+    }
   </style>
 
   <script>
     $(document).ready(function(){
       $("#getLocksButton").click(function(){
+        // Clear any previous messages
+        $("#messageDisplay").text('').removeClass('success-message error-message');
         // Show spinner instead of progress bar.
         $("#spinnerContainer").show();
         $("#locksCount").text("Loading...");
@@ -489,20 +529,54 @@
     }
 
     function closeSelectedHandles(fileIds) {
+      // Show progress container with simulated progress
+      $('#progressContainer').show();
+      $('#progressBarFill').css('width', '10%').text('10%');
+      $('#progressText').text('Closing ' + fileIds.length + ' lock(s)...');
+      $('#closeSelectedLocksButton').prop('disabled', true);
+
+      // Simulate progress animation
+      let progress = 10;
+      const progressInterval = setInterval(() => {
+        if (progress < 90) {
+          progress += 10;
+          $('#progressBarFill').css('width', progress + '%').text(progress + '%');
+        }
+      }, 500);
+
+      // Use the reliable non-SSE endpoint
       $.ajax({
         url: '/close_handles',
         method: 'POST',
         contentType: 'application/json',
         data: JSON.stringify({ file_ids: fileIds }),
         success: function(response) {
+          clearInterval(progressInterval);
+          $('#progressBarFill').css('width', '100%').text('100%');
+          $('#progressText').text('Complete!');
+
           $("#messageDisplay").text(response.message).addClass('success-message').removeClass('error-message');
+
           fileIds.forEach(function(fileId) {
             $('input.lock-checkbox[data-fileid="' + fileId + '"]').closest('tr').remove();
           });
           updateRowCount();
+
+          // Hide progress after 2 seconds
+          setTimeout(() => {
+            $('#progressContainer').hide();
+            $('#closeSelectedLocksButton').prop('disabled', false);
+          }, 2000);
         },
         error: function(jqXHR) {
-          $("#messageDisplay").text('Error: ' + errorMessage).addClass('error-message').removeClass('success-message');
+          clearInterval(progressInterval);
+          let errorMsg = 'Error closing locks';
+          if (jqXHR.responseJSON && jqXHR.responseJSON.error) {
+            errorMsg = jqXHR.responseJSON.error;
+          }
+          $("#messageDisplay").text(errorMsg).addClass('error-message').removeClass('success-message');
+          $('#progressContainer').hide();
+          $('#closeSelectedLocksButton').prop('disabled', false);
         }
       });
     }
@@ -588,6 +662,14 @@
     <span></span>
     {% endif %}
     <button id="clearSearchButton">Clear Search</button>
+  </div>
+
+  <!-- Progress Bar Container -->
+  <div id="progressContainer">
+    <div id="progressText">Closing locks...</div>
+    <div id="progressBarBg">
+      <div id="progressBarFill">0%</div>
+    </div>
   </div>
   <br>
 
