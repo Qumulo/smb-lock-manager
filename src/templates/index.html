@@ -66,10 +66,10 @@
       font-family: 'Nunito', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif';
       font-weight: 300;
       margin: 0;
-      padding: 20px;
+      padding: 0 20px 20px 20px;
       background-color: var(--blackberry-950);
       color: var(--lychee-300);
-      font-size: 1rem;
+      font-size: 0.875rem;
     }
 
     h1 {
@@ -126,8 +126,11 @@
     }
 
     #locksCount {
-      margin-left: 1rem;
       color: var(--lychee-300);
+    }
+
+    #locksCount:empty {
+      display: none;
     }
 
     /* Info Box */
@@ -148,8 +151,8 @@
       border: 1px solid var(--blackberry-700);
       border-radius: 0.375rem;
       padding: 0.5rem 0.75rem;
-      margin-right: 0.5rem;
-      width: 300px;
+      min-width: 200px;
+      flex-grow: 1;
       font-size: 1rem;
       transition: border-color 0.2s;
     }
@@ -190,7 +193,7 @@
     table {
       width: 100%;
       border-collapse: collapse;
-      margin-top: 1rem;
+      margin-top: 5px;
       background-color: var(--blackberry-900);
       border-radius: 0.5rem;
       overflow: hidden;
@@ -260,15 +263,25 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding: 1rem 1.5rem;
-      background-color: var(--blackberry-900);
-      border: 1px solid var(--blackberry-700);
-      border-radius: 0.5rem;
-      margin-bottom: 1.5rem;
+      padding: 5px;
+      background-color: transparent;
+      border: none;
+      margin-top: 0;
+      margin-bottom: 5px;
+      gap: 2rem;
+    }
+
+    .header-title {
+      font-size: 1.31rem;
+      font-weight: 160;
+      color: var(--lychee-100);
+      margin: 0;
+      white-space: nowrap;
     }
 
     .user-info {
       color: var(--lychee-300);
+      flex-grow: 1;
     }
 
     .user-info b {
@@ -300,12 +313,12 @@
 
     /* Results Container */
     #resultsContainer {
-      margin-top: 1.5rem;
+      margin-top: 5px;
     }
 
     #messageDisplay {
       display: block;
-      margin-bottom: 1rem;
+      margin-bottom: 5px;
       font-size: 1rem;
     }
 
@@ -313,7 +326,7 @@
       background-color: transparent;
       border: none;
       padding: 0;
-      margin-bottom: 0.5rem;
+      margin-bottom: 5px;
       color: var(--lychee-400);
       font-size: 0.875rem;
     }
@@ -327,6 +340,48 @@
     a:hover {
       color: var(--agave-500);
       text-decoration: underline;
+    }
+
+    /* Action Bar */
+    .action-bar {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      column-gap: 1.5rem;
+      row-gap: 0.25rem;
+      padding: 10px;
+      background-color: var(--blackberry-900);
+      border: 1px solid var(--blackberry-700);
+      border-radius: 0.5rem;
+      margin-bottom: 3px;
+    }
+
+    .action-bar form {
+      display: flex;
+      align-items: center;
+      gap: 1.5rem;
+      margin: 0;
+      flex-grow: 1;
+    }
+
+    .action-bar-info {
+      flex-basis: 100%;
+      color: var(--lychee-400);
+      font-size: 0.875rem;
+      margin-top: 0;
+      text-align: center;
+    }
+
+    /* Button Bar */
+    .button-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px;
+      background-color: var(--blackberry-900);
+      border: 1px solid var(--blackberry-700);
+      border-radius: 0.5rem;
+      margin-bottom: 3px;
     }
   </style>
 
@@ -506,9 +561,8 @@
 </head>
 
 <body>
-  <h1>Qumulo SMB Lock Manager</h1>
-
   <div class="header-section">
+    <div class="header-title">Qumulo SMB Lock Manager</div>
     <div class="user-info">
       Logged in user: <b>{{ who_am_i }}</b>, managing cluster <b>{{ cluster_address }}</b>
       {% if not rw_user %}
@@ -519,27 +573,22 @@
       <a href="/logout" class="logout-btn">Logout</a>
     </div>
   </div>
-  <p>
-    <button id="getLocksButton">Get SMB Locks</button>  
+  <div class="action-bar">
+    <button id="getLocksButton">Get SMB Locks</button>
     <span id="locksCount"></span>
-  </p>
-  <p id="rcorners1">
-    Enter a blank search for all locks. Click on "Get SMB Locks" to load new locks
-    <br>
-  </p>
-  <form id="searchForm">
-    <input type="text" id="searchQuery" placeholder="Enter part of a file path"> 
-    <button type="submit">Search</button> <small>(Searches are case-insensitive)</small>
-  </form>
-  <br>
-  <button id="clearSearchButton">Clear Search</button><br>
-  
-  <!-- Hide "Close Locks" buttons from Read Only accounts -->
-  {% if rw_user %}
-  <p>
+    <form id="searchForm">
+      <input type="text" id="searchQuery" placeholder="Enter a blank search for all locks. Click on 'Get SMB Locks' to load new locks. Searches are case-insensitive">
+      <button type="submit">Search</button>
+    </form>
+  </div>
+  <div class="button-bar">
+    {% if rw_user %}
     <button id="closeSelectedLocksButton">Close Selected Locks</button>
-  </p>
-  {% endif %}
+    {% else %}
+    <span></span>
+    {% endif %}
+    <button id="clearSearchButton">Clear Search</button>
+  </div>
   <br>
 
   <!-- Spinner Container -->
