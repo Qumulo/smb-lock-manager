@@ -380,41 +380,119 @@ def find_handle(file_id):
         return json.loads(handle_json)
     return None
 
-# Function to close handles sent by the Web UI.
+# Helper function to close a single handle - called concurrently by close_handles
+async def close_single_handle(session, file_id, handle, results):
+    """Close a single handle with proper error handling"""
+    try:
+        url = build_url("/api/v1/smb/files/close")
+        async with session.post(url, headers=get_headers(), json=[handle], ssl=False) as response:
+            if response.status == 200:
+                results['successful'].append(file_id)
+                return True
+            else:
+                response_text = await response.text()
+                results['failed'].append({
+                    'file_id': file_id,
+                    'error': f"HTTP {response.status}: {response_text}"
+                })
+                return False
+    except Exception as e:
+        results['failed'].append({
+            'file_id': file_id,
+            'error': f"Exception: {str(e)}"
+        })
+        return False
+
+
+# Function to close handles sent by the Web UI (optimized for parallel execution).
 @app.route('/close_handles', methods=['POST'])
 @requires_auth
 async def close_handles():
     data = await request.get_json()
     file_ids = data['file_ids']
-    for id in file_ids:
-        handle = find_handle(str(id))
-        if handle:
-            url = build_url("/api/v1/smb/files/close")
-            async with aiohttp.ClientSession() as session:
-                async with session.post(url, headers=get_headers(), json=[handle], ssl=False) as response:
-                    if response.status == 200:
-                        open_files_raw = redis_db.get('open_files')
-                        open_locks_raw = redis_db.get('smb_locks')
-                        open_locks = decompress_json(open_locks_raw)
-                        if open_files_raw:
-                            open_files = decompress_json(open_files_raw)
-                            if str(id) in open_files:
-                                del open_files[str(id)]
-                                redis_db.set('open_files', compress_json(open_files))
-                                index_to_remove = next(
-                                    (index for index, grant in enumerate(open_locks['grants']) if grant['file_id'] == str(id)),
-                                    None
-                                )
-                                if index_to_remove is not None:
-                                    del open_locks['grants'][index_to_remove]
-                                redis_db.set('smb_locks', compress_json(open_locks))
-                    else:
-                        response_text = await response.text()
-                        return jsonify({"error": f"Error closing file handle!! {response.status} - {response_text}"}), 500
-        else:
-            return jsonify({"error": "File handle not found"}), 404
 
-    return jsonify({"message": "Selected locks have been released"}), 200
+    # Validate and prepare handles
+    handles_to_close = []
+    not_found = []
+
+    for file_id in file_ids:
+        handle = find_handle(str(file_id))
+        if handle:
+            handles_to_close.append((str(file_id), handle))
+        else:
+            not_found.append(str(file_id))
+
+    if not handles_to_close:
+        return jsonify({
+            "error": "No valid handles found",
+            "not_found": not_found
+        }), 404
+
+    # Track results
+    results = {
+        'successful': [],
+        'failed': [],
+        'not_found': not_found
+    }
+
+    # Close all handles concurrently with batching for safety (100 at a time)
+    batch_size = 100
+    async with aiohttp.ClientSession() as session:
+        for i in range(0, len(handles_to_close), batch_size):
+            batch = handles_to_close[i:i + batch_size]
+            tasks = [
+                close_single_handle(session, file_id, handle, results)
+                for file_id, handle in batch
+            ]
+            # Execute batch concurrently with error handling
+            await asyncio.gather(*tasks, return_exceptions=True)
+
+    # Update Redis cache - remove successfully closed locks
+    if results['successful']:
+        open_files_raw = redis_db.get('open_files')
+        open_locks_raw = redis_db.get('smb_locks')
+
+        if open_files_raw and open_locks_raw:
+            open_files = decompress_json(open_files_raw)
+            open_locks = decompress_json(open_locks_raw)
+
+            # Remove closed files from cache
+            for file_id in results['successful']:
+                if file_id in open_files:
+                    del open_files[file_id]
+
+            # Remove closed locks from grants list
+            open_locks['grants'] = [
+                grant for grant in open_locks.get('grants', [])
+                if grant['file_id'] not in results['successful']
+            ]
+
+            # Update Redis with cleaned data
+            redis_db.set('open_files', compress_json(open_files))
+            redis_db.set('smb_locks', compress_json(open_locks))
+
+    # Build response message
+    total_requested = len(file_ids)
+    total_successful = len(results['successful'])
+    total_failed = len(results['failed'])
+    total_not_found = len(results['not_found'])
+
+    if total_failed == 0 and total_not_found == 0:
+        return jsonify({
+            "message": f"Successfully released {total_successful} lock(s)",
+            "successful": total_successful,
+            "failed": 0,
+            "not_found": 0
+        }), 200
+    else:
+        return jsonify({
+            "message": f"Released {total_successful} of {total_requested} lock(s)",
+            "successful": total_successful,
+            "failed": total_failed,
+            "not_found": total_not_found,
+            "failed_details": results['failed'][:10],  # Limit error details to first 10
+            "not_found_ids": results['not_found'][:10]
+        }), 207  # 207 Multi-Status for partial success
 
 if __name__ == '__main__':
     app.run(debug=True, use_reloader=False)
